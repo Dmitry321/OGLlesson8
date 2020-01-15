@@ -192,7 +192,7 @@ void Widget::paintGL()
     m_program.setUniformValue("u_shadowMap", GL_TEXTURE4 - GL_TEXTURE0);
     m_program.setUniformValue("u_projectionMatrix", m_projectionMatrix);
    // m_program.setUniformValue("u_viewMatrix", viewMatrix);
-    m_program.setUniformValue("u_lightDirection", QVector4D(0.0, 0.0, -1.0, 0.0));
+    m_program.setUniformValue("u_lightDirection", QVector4D(0.0, 0.0, -1.0, 0.0)); // т.к. камера смотрит на ось z источник света должен в противоположную сторону от камеры светить
     m_program.setUniformValue("u_projectionLightMatrix", m_projectionLightMatrix);
     m_program.setUniformValue("u_shadowLightMatrix", m_shadowLightMatrix);
     m_program.setUniformValue("u_lightMatrix", m_lightMatrix);

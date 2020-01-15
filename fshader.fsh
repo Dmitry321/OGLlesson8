@@ -24,14 +24,49 @@ float SampleShadowMap(sampler2D map, vec2 coords, float compare){
     vec4 v = texture2D(map, coords);
     float value = v.x * 255.0 + (v.y * 255.0 + (v.z *255.0 + v.w) / 255.0) / 255.0;
     return step(compare, value);
+}
 
+// Линейная фильтрация чуть сглаживает углы на тени но оставляет лесенки
+float SampleShadowMapLinear(sampler2D map, vec2 coords, float compare, vec2 texelSize){ // просто размер пикселя в текстурных координатах от 0 до 1 должен быть размер
+    // Изначально получаем позицию пикселя
+    vec2 pixelPos = coords / texelSize + 0.5;  // +0.5 чтобы попасть в центр пикселя
+    vec2 fractPart = fract(pixelPos);
+    vec2 startTexel = (pixelPos - fractPart) * texelSize;
+    // Находим приближение по 4м соседним клеткам
+    float blTexel = SampleShadowMap(map, startTexel, compare); // bottom left texel
+    float brTexel = SampleShadowMap(map, startTexel + vec2(texelSize.x, 0.0), compare); // bottom right texel
+    float tlTexel = SampleShadowMap(map, startTexel + vec2(0.0, texelSize.y), compare); // top left texel
+    float trTexel = SampleShadowMap(map, startTexel + texelSize, compare); // top right texel
+    // Далее ищем интерополяцию от одной точки до другой с учетом дробной части
+    float mixA = mix(blTexel, tlTexel, fractPart.y);
+    float mixB = mix(brTexel, trTexel, fractPart.y);
+
+    return mix(mixA, mixB, fractPart.x);
+}
+
+// еще один алгоритм чтобы убрать лесенки Point Cloud Filtering
+float SampleShadowMapPCF(sampler2D map, vec2 coords, float compare, vec2 texelSize)
+{
+    float result = 0.0;
+    // вместо -1.0 и 1.0 можно брать большие числа чтобы больше размывать границу но это требует большей производительности
+    for (float y = -1.0; y < 1.0; y += 1.0)
+        for (float x = -1.0; x < 1.0; x += 1.0)
+        {
+            vec2 offset = vec2(x, y) * texelSize;
+            result += SampleShadowMapLinear(map, coords + offset, compare, texelSize);
+        }
+    return result / 9.0; // та как у нас ровно 9 элементов из цикла 3x3
 }
 
 float CalcShadowAmount(sampler2D map, vec4 initialShadowCoords)
 {
     vec3 tmp = v_positionLightMatrix.xyz / v_positionLightMatrix.w;
     tmp = tmp * vec3(0.5) + vec3(0.5);
-    return SampleShadowMap(map, tmp.xy, tmp.z * 255.0 - 0.5); //z - удаленность
+    float offset = 2.0;
+    offset *= dot(v_normal, v_lightDirection.xyz);
+    //return SampleShadowMap(map, tmp.xy, tmp.z * 255.0 - 0.5); //z - удаленность
+    //return SampleShadowMapLinear(map, tmp.xy, tmp.z * 255.0 - 0.5, vec2(1.0 / 1024.0));
+    return SampleShadowMapPCF(map, tmp.xy, tmp.z * 255.0 + offset, vec2(1.0 / 1024.0));
 }
 
 void main(void)
@@ -67,7 +102,7 @@ void main(void)
     resultColor += specularColor * vec4(u_materialProperty.specularColor,1.0);
 
     // чтобы не было совсем черных точек изменяем коэффициент затенения
-    shadowCoef += 0.2;
+    shadowCoef += 0.15; // чем больше тем светлее
     if(shadowCoef > 1.0) shadowCoef = 1.0;
 
 
