@@ -1,0 +1,30 @@
+<RCC>
+    <qresource prefix="/">
+        <file>cube.png</file>
+        <file>cube1.jpg</file>
+        <file>cube1.png</file>
+        <file>cube.jpg</file>
+        <file>stone.png</file>
+        <file>stone2.png</file>
+        <file>skybox.jpg</file>
+        <file>skybox/side6.png</file>
+        <file>skybox/side5.png</file>
+        <file>skybox/side4.png</file>
+        <file>skybox/side3.png</file>
+        <file>skybox/side2.png</file>
+        <file>skybox/side1.png</file>
+        <file>models.qrc</file>
+        <file>blue.png</file>
+        <file>red.png</file>
+        <file>normal_3.jpg</file>
+        <file>mars.jpg</file>
+    </qresource>
+    <qresource prefix="/skybox">
+        <file>skybox/top.jpg</file>
+        <file>skybox/right.jpg</file>
+        <file>skybox/left.jpg</file>
+        <file>skybox/front.jpg</file>
+        <file>skybox/bottom.jpg</file>
+        <file>skybox/back.jpg</file>
+    </qresource>
+</RCC>

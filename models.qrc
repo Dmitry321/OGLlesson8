@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>monkey.obj</file>
+        <file>monkey1.mtl</file>
+        <file>monkey1.obj</file>
+        <file>monkey.mtl</file>
+        <file>nakovalna.obj</file>
+        <file>widget.cpp</file>
+        <file>monkey2.mtl</file>
+        <file>monkey2.obj</file>
+    </qresource>
+</RCC>
