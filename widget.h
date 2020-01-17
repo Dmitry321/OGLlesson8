@@ -18,6 +18,7 @@ class Camera3D;
 class SkyBox;
 class SkyBoxNew;
 class QOpenGLFramebufferObject;
+class Light;
 
 //struct VertexData
 //{
@@ -59,12 +60,12 @@ protected:  // вызываются только внутри этого кла�
 private:
     QMatrix4x4 m_projectionMatrix;
     QMatrix4x4 m_projectionLightMatrix;
-    QMatrix4x4 m_lightMatrix;
+//    QMatrix4x4 m_lightMatrix;
 
-    float m_lightRotateX;
-    float m_lightRotateY;
+//    float m_lightRotateX;
+//    float m_lightRotateY;
 
-    QMatrix4x4 m_shadowLightMatrix;
+//    QMatrix4x4 m_shadowLightMatrix;
     QOpenGLShaderProgram m_program;
     QOpenGLShaderProgram m_programDepth;
     QOpenGLShaderProgram m_programSkyBox;
@@ -93,6 +94,8 @@ private:
     QOpenGLFramebufferObject *m_depthBuffer;
     quint32 m_fbHeight;
     quint32 m_fbWidth;
+
+    Light *m_light1;
 
 
 };

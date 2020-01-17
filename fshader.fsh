@@ -5,6 +5,18 @@ struct materialProperty{
     float shinnes;
 };
 
+struct lightProperty
+{
+    vec3 ambienceColor;
+    vec3 diffuseColor;
+    vec3 specularColor;
+    vec4 position;
+    vec4 direction;
+    float cutoff;
+    int type; // Directional = 0 Point = 1 Spot = 2
+
+};
+
 uniform sampler2D u_diffuseMap;
 uniform sampler2D u_normalMap;
 uniform sampler2D u_shadowMap;
@@ -13,12 +25,17 @@ uniform materialProperty u_materialProperty;
 uniform highp float u_lightPower;
 uniform bool u_isUsingDiffuseMap;
 uniform bool u_isUsingNormalMap;
+//uniform highp vec4 u_lightDirection;
+uniform lightProperty u_lightProperty;
+
 varying highp vec4 v_position;
 varying highp vec2 v_texcoord;
 varying highp vec3 v_normal;
 varying highp mat3 v_tbnMatrix;
-varying highp vec4 v_lightDirection;
+//varying highp vec4 v_lightDirection;
 varying highp vec4 v_positionLightMatrix;
+varying highp mat4 v_viewMatrix;
+lightProperty v_lightProperty;
 
 float SampleShadowMap(sampler2D map, vec2 coords, float compare){
     vec4 v = texture2D(map, coords);
@@ -63,7 +80,7 @@ float CalcShadowAmount(sampler2D map, vec4 initialShadowCoords)
     vec3 tmp = v_positionLightMatrix.xyz / v_positionLightMatrix.w;
     tmp = tmp * vec3(0.5) + vec3(0.5);
     float offset = 2.0;
-    offset *= dot(v_normal, v_lightDirection.xyz);
+    offset *= dot(v_normal, v_lightProperty.direction.xyz);
     //return SampleShadowMap(map, tmp.xy, tmp.z * 255.0 - 0.5); //z - удаленность
     //return SampleShadowMapLinear(map, tmp.xy, tmp.z * 255.0 - 0.5, vec2(1.0 / 1024.0));
     return SampleShadowMapPCF(map, tmp.xy, tmp.z * 255.0 + offset, vec2(1.0 / 1024.0));
@@ -71,6 +88,15 @@ float CalcShadowAmount(sampler2D map, vec4 initialShadowCoords)
 
 void main(void)
 {
+    v_lightProperty.ambienceColor = u_lightProperty.ambienceColor;
+    v_lightProperty.diffuseColor = u_lightProperty.diffuseColor;
+    v_lightProperty.specularColor = u_lightProperty.specularColor;
+    v_lightProperty.cutoff = u_lightProperty.cutoff;
+    v_lightProperty.type = u_lightProperty.type;
+    v_lightProperty.direction = v_viewMatrix * u_lightProperty.direction;
+    v_lightProperty.position = v_viewMatrix * u_lightProperty.position;
+
+
     highp float shadowCoef = CalcShadowAmount(u_shadowMap, v_positionLightMatrix);
     vec3 tmp = v_positionLightMatrix.xyz / v_positionLightMatrix.w;
     tmp = tmp * vec3(0.5) + vec3(0.5);
@@ -86,7 +112,17 @@ void main(void)
     vec3 eyeVect = normalize(v_position.xyz - eyePosition.xyz);
     if(u_isUsingNormalMap)  eyeVect = normalize(v_tbnMatrix * eyeVect);
  //   vec3 lightVect = normalize(v_position.xyz - u_lightPosition.xyz);
-    vec3 lightVect = normalize(v_lightDirection.xyz);
+    vec3 lightVect;
+    if(v_lightProperty.type == 0) // Directional
+        lightVect = normalize(v_lightProperty.direction.xyz);
+    else{ // Point or Spot
+        lightVect = normalize(v_position - v_lightProperty.position).xyz;
+        if(v_lightProperty.type == 2){ //Spot
+            float angle = acos(dot(v_lightProperty.direction.xyz, lightVect)); //  скалярное произведение единичных векторов - произведение модулей векторов на cos угла между ними
+            if(angle > v_lightProperty.cutoff)
+                lightVect = vec3(0.0, 0.0, 0.0);
+        }
+    }
     if(u_isUsingNormalMap) lightVect = normalize(v_tbnMatrix * lightVect);
     vec3 reflectLight = normalize(reflect(lightVect, usingNormal));
     float len = length(v_position.xyz - eyePosition.xyz);

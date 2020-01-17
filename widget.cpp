@@ -9,6 +9,7 @@
 #include "skybox.h"
 #include "skyboxnew.h"
 #include "material.h"
+#include "light.h"
 
 
 
@@ -20,21 +21,31 @@ Widget::Widget(QWidget *parent)
     m_camera->translate(QVector3D(0.0f, 0.0f, -5.0f));
     m_fbHeight = 1024;
     m_fbWidth = 1024;
+    angleObject = 0.0f;
+    angleGroup1 = 0.0f;
+    angleGroup1 = 0.0f;
+    angleMain = 0.0f;
 
     m_projectionLightMatrix.setToIdentity();
     m_projectionLightMatrix.ortho(-40, 40, -40, 40, -40, 40);
 
-    m_lightRotateX = 30; // угол вращения света в градусах
-    m_lightRotateY = 40;
+    m_light1 = new Light(Light::Spot);
+    m_light1->setPosition(QVector4D(10.0f, 10.0f, 10.0f, 1.0f));
+    m_light1->setDirection(QVector4D(-1.0f, -1.0f, -1.0f, 0.0));
+    m_light1->setCutoff(20.0f / 180.0f * M_PI );
 
-    m_shadowLightMatrix.setToIdentity();
-    m_shadowLightMatrix.rotate(m_lightRotateX, 1.0, 0.0, 0.0);
-    m_shadowLightMatrix.rotate(m_lightRotateY, 0.0, 1.0, 0.0);
 
-    // чтобы освещение совпадало с тенями надо наоборот вращать второй вектор света
-    m_lightMatrix.setToIdentity();
-    m_lightMatrix.rotate(-m_lightRotateY, 0.0, 1.0, 0.0);
-    m_lightMatrix.rotate(-m_lightRotateX, 1.0, 0.0, 0.0);
+//    m_lightRotateX = 30; // угол вращения света в градусах
+//    m_lightRotateY = 40;
+
+//    m_shadowLightMatrix.setToIdentity();
+//    m_shadowLightMatrix.rotate(m_lightRotateX, 1.0, 0.0, 0.0);
+//    m_shadowLightMatrix.rotate(m_lightRotateY, 0.0, 1.0, 0.0);
+
+//    // чтобы освещение совпадало с тенями надо наоборот вращать второй вектор света
+//    m_lightMatrix.setToIdentity();
+//    m_lightMatrix.rotate(-m_lightRotateY, 0.0, 1.0, 0.0);
+//    m_lightMatrix.rotate(-m_lightRotateX, 1.0, 0.0, 0.0);
 
 
 }
@@ -74,36 +85,47 @@ void Widget::initializeGL()
 //    m_objects[1]->translate(QVector3D(0.8f, 0.0f, 0.0f));
 
     float step = 2.0f;
+
+    float x = 0.0, y = 0.0, z = 0.0;
+
     m_groups.append(new Group3D);
     //m_groups[0]->addObject(m_camera);
-    for(float x = -step; x <= step; x += step){
-        for(float y = -step; y <= step; y += step){
-            for(float z = -step; z <= step; z += step){
-                initCube(1.0f, 1.0f, 1.0f, &diffuseMap, &normalMap);
-                m_objects[m_objects.size() - 1 ]->translate(QVector3D(x, y, z));
-                m_groups[m_groups.size() - 1 ]->addObject(m_objects[m_objects.size() - 1 ]);
-            }
-        }
-    }
-    m_groups[0]->translate(QVector3D(-8.0f, 0.0f, 0.0f));
+//    for(float x = -step; x <= step; x += step){
+//        for(float y = -step; y <= step; y += step){
+//            for(float z = -step; z <= step; z += step){
+                m_objects.append(new ObjectEngine3D);
+                m_objects.last()->loadObjectFromFile(":/monkey1.obj");
+
+                //initCube(1.0f, 1.0f, 1.0f, &diffuseMap, &normalMap);
+                m_objects.last()/*[m_objects.size() - 1 ]*/->translate(QVector3D(x, y, z));
+                m_groups.last()/*[m_groups.size() - 1 ]*/->addObject(m_objects.last()/*[m_objects.size() - 1 ]*/);
+//            }
+//        }
+//    }
+    m_groups.last()/*[0]*/->translate(QVector3D(-4.0f, 0.0f, 0.0f));
 
     m_groups.append(new Group3D);
-    for(float x = -step; x <= step; x += step){
-        for(float y = -step; y <= step; y += step){
-            for(float z = -step; z <= step; z += step){
-                initCube(1.0f, 1.0f, 1.0f, &diffuseMap, &normalMap);
-                m_objects[m_objects.size() - 1 ]->translate(QVector3D(x, y, z));
-                m_groups[m_groups.size() - 1 ]->addObject(m_objects[m_objects.size() - 1 ]);
-            }
-        }
-    }
-    m_groups[1]->translate(QVector3D(8.0f, 0.0f, 0.0f));
+//    for(float x = -step; x <= step; x += step){
+//        for(float y = -step; y <= step; y += step){
+//            for(float z = -step; z <= step; z += step){
+              m_objects.append(new ObjectEngine3D);
+              m_objects.last()->loadObjectFromFile(":/monkey1.obj");
+              m_objects.last()->translate(QVector3D(x, y, z));
+              m_groups.last()->addObject(m_objects.last()/*[m_objects.size() - 1 ]*/);
+
+//                initCube(1.0f, 1.0f, 1.0f, &diffuseMap, &normalMap);
+//                m_objects[m_objects.size() - 1 ]->translate(QVector3D(x, y, z));
+//                m_groups[m_groups.size() - 1 ]->addObject(m_objects[m_objects.size() - 1 ]);
+//            }
+//        }
+//    }
+    m_groups.last()/*[1]*/->translate(QVector3D(4.0f, 0.0f, 0.0f));
 
     m_groups.append(new Group3D);
-    m_groups[2]->addObject(m_groups[0]);
-    m_groups[2]->addObject(m_groups[1]);
+    m_groups.last()/*[2]*/->addObject(m_groups[0]);
+    m_groups.last()/*[2]*/->addObject(m_groups[1]);
 
-    m_transformObjects.append(m_groups[2]);
+    m_transformObjects.append(m_groups.last()/*[2]*/);
 
     //m_objects.append(new ObjectEngine3D);
    // m_objects.last()->loadObjectFromFile(":/monkey2.obj");
@@ -155,7 +177,7 @@ void Widget::paintGL()
 
     m_programDepth.bind();
     m_programDepth.setUniformValue("u_projectionLightMatrix", m_projectionLightMatrix);
-    m_programDepth.setUniformValue("u_shadowLightMatrix", m_shadowLightMatrix);
+    m_programDepth.setUniformValue("u_shadowLightMatrix", m_light1->getLightMatrix());
 
     for(auto *s3d: m_transformObjects){
         s3d->draw(&m_programDepth, context()->functions());
@@ -192,11 +214,18 @@ void Widget::paintGL()
     m_program.setUniformValue("u_shadowMap", GL_TEXTURE4 - GL_TEXTURE0);
     m_program.setUniformValue("u_projectionMatrix", m_projectionMatrix);
    // m_program.setUniformValue("u_viewMatrix", viewMatrix);
-    m_program.setUniformValue("u_lightDirection", QVector4D(0.0, 0.0, -1.0, 0.0)); // т.к. камера смотрит на ось z источник света должен в противоположную сторону от камеры светить
+   // m_program.setUniformValue("u_lightDirection", QVector4D(0.0, 0.0, -1.0, 0.0)); // т.к. камера смотрит на ось z источник света должен в противоположную сторону от камеры светить
     m_program.setUniformValue("u_projectionLightMatrix", m_projectionLightMatrix);
-    m_program.setUniformValue("u_shadowLightMatrix", m_shadowLightMatrix);
-    m_program.setUniformValue("u_lightMatrix", m_lightMatrix);
+    m_program.setUniformValue("u_shadowLightMatrix", m_light1->getLightMatrix());
+   // m_program.setUniformValue("u_lightMatrix", m_lightMatrix);
     m_program.setUniformValue("u_lightPower", 1.0f);
+    m_program.setUniformValue("u_lightProperty.ambienceColor", m_light1->getAmbienceColor());
+    m_program.setUniformValue("u_lightProperty.diffuseColor", m_light1->getDiffuseColor());
+    m_program.setUniformValue("u_lightProperty.specularColor", m_light1->getSpecularColor());
+    m_program.setUniformValue("u_lightProperty.position", m_light1->getPosition());
+    m_program.setUniformValue("u_lightProperty.direction", m_light1->getDirection());
+    m_program.setUniformValue("u_lightProperty.cutoff", m_light1->getCutoff());
+    m_program.setUniformValue("u_lightProperty.type", m_light1->getType());
 
     m_camera->draw(&m_program);
     for(auto *s3d: m_transformObjects){

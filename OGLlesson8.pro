@@ -25,6 +25,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++11
 
 SOURCES += \
+    light.cpp \
         main.cpp \
     objectengine3d.cpp \
     skyboxnew.cpp \
@@ -37,6 +38,7 @@ SOURCES += \
     materiallibrary.cpp
 
 HEADERS += \
+    light.h \
     objectengine3d.h \
     skyboxnew.h \
         widget.h \
