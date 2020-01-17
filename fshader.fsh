@@ -26,7 +26,9 @@ uniform highp float u_lightPower;
 uniform bool u_isUsingDiffuseMap;
 uniform bool u_isUsingNormalMap;
 //uniform highp vec4 u_lightDirection;
-uniform lightProperty u_lightProperty;
+uniform lightProperty u_lightProperty[3];
+uniform int u_countLights;
+uniform int u_indexLightForShadow;
 
 varying highp vec4 v_position;
 varying highp vec2 v_texcoord;
@@ -35,7 +37,7 @@ varying highp mat3 v_tbnMatrix;
 //varying highp vec4 v_lightDirection;
 varying highp vec4 v_positionLightMatrix;
 varying highp mat4 v_viewMatrix;
-lightProperty v_lightProperty;
+lightProperty v_lightProperty[3];
 
 float SampleShadowMap(sampler2D map, vec2 coords, float compare){
     vec4 v = texture2D(map, coords);
@@ -80,7 +82,7 @@ float CalcShadowAmount(sampler2D map, vec4 initialShadowCoords)
     vec3 tmp = v_positionLightMatrix.xyz / v_positionLightMatrix.w;
     tmp = tmp * vec3(0.5) + vec3(0.5);
     float offset = 2.0;
-    offset *= dot(v_normal, v_lightProperty.direction.xyz);
+    offset *= dot(v_normal, v_lightProperty[u_indexLightForShadow].direction.xyz);
     //return SampleShadowMap(map, tmp.xy, tmp.z * 255.0 - 0.5); //z - удаленность
     //return SampleShadowMapLinear(map, tmp.xy, tmp.z * 255.0 - 0.5, vec2(1.0 / 1024.0));
     return SampleShadowMapPCF(map, tmp.xy, tmp.z * 255.0 + offset, vec2(1.0 / 1024.0));
@@ -88,16 +90,21 @@ float CalcShadowAmount(sampler2D map, vec4 initialShadowCoords)
 
 void main(void)
 {
-    v_lightProperty.ambienceColor = u_lightProperty.ambienceColor;
-    v_lightProperty.diffuseColor = u_lightProperty.diffuseColor;
-    v_lightProperty.specularColor = u_lightProperty.specularColor;
-    v_lightProperty.cutoff = u_lightProperty.cutoff;
-    v_lightProperty.type = u_lightProperty.type;
-    v_lightProperty.direction = v_viewMatrix * u_lightProperty.direction;
-    v_lightProperty.position = v_viewMatrix * u_lightProperty.position;
+    for(int i = 0; i < u_countLights; ++i){
+        v_lightProperty[i].ambienceColor = u_lightProperty[i].ambienceColor;
+        v_lightProperty[i].diffuseColor = u_lightProperty[i].diffuseColor;
+        v_lightProperty[i].specularColor = u_lightProperty[i].specularColor;
+        v_lightProperty[i].cutoff = u_lightProperty[i].cutoff;
+        v_lightProperty[i].type = u_lightProperty[i].type;
+        v_lightProperty[i].direction = v_viewMatrix * u_lightProperty[i].direction;
+        v_lightProperty[i].position = v_viewMatrix * u_lightProperty[i].position;
+    }
 
-
-    highp float shadowCoef = CalcShadowAmount(u_shadowMap, v_positionLightMatrix);
+    highp float shadowCoef;
+    if(v_lightProperty[u_indexLightForShadow].type == 0) // Directional
+        shadowCoef = CalcShadowAmount(u_shadowMap, v_positionLightMatrix);
+    else
+        shadowCoef = 1.0;
     vec3 tmp = v_positionLightMatrix.xyz / v_positionLightMatrix.w;
     tmp = tmp * vec3(0.5) + vec3(0.5);
     // ищем коэффициент затенинеия который будет либо 0 либо 1
@@ -112,31 +119,36 @@ void main(void)
     vec3 eyeVect = normalize(v_position.xyz - eyePosition.xyz);
     if(u_isUsingNormalMap)  eyeVect = normalize(v_tbnMatrix * eyeVect);
  //   vec3 lightVect = normalize(v_position.xyz - u_lightPosition.xyz);
-    vec3 lightVect;
-    if(v_lightProperty.type == 0) // Directional
-        lightVect = normalize(v_lightProperty.direction.xyz);
-    else{ // Point or Spot
-        lightVect = normalize(v_position - v_lightProperty.position).xyz;
-        if(v_lightProperty.type == 2){ //Spot
-            float angle = acos(dot(v_lightProperty.direction.xyz, lightVect)); //  скалярное произведение единичных векторов - произведение модулей векторов на cos угла между ними
-            if(angle > v_lightProperty.cutoff)
-                lightVect = vec3(0.0, 0.0, 0.0);
+    for(int i = 0; i < u_countLights; ++i){
+        vec4 resultLightColor = vec4(0.0, 0.0, 0.0, 0.0);;
+
+        vec3 lightVect;
+        if(v_lightProperty[i].type == 0) // Directional
+            lightVect = normalize(v_lightProperty[i].direction.xyz);
+        else{ // Point or Spot
+            lightVect = normalize(v_position - v_lightProperty[i].position).xyz;
+            if(v_lightProperty[i].type == 2){ //Spot
+                float angle = acos(dot(v_lightProperty[i].direction.xyz, lightVect)); //  скалярное произведение единичных векторов - произведение модулей векторов на cos угла между ними
+                if(angle > v_lightProperty[i].cutoff)
+                    lightVect = vec3(0.0, 0.0, 0.0);
+            }
         }
+        if(u_isUsingNormalMap) lightVect = normalize(v_tbnMatrix * lightVect);
+        vec3 reflectLight = normalize(reflect(lightVect, usingNormal));
+        float len = length(v_position.xyz - eyePosition.xyz);
+        float specularFactor = u_materialProperty.shinnes; //60.0;  // размер пятна блика
+        float ambientFactor = 0.1; // светимость самого материала
+
+        if(u_isUsingDiffuseMap == false) diffMatColor = vec4(u_materialProperty.diffuseColor, 1.0);
+        vec4 diffColor = diffMatColor * u_lightPower * max(0.0, dot(usingNormal, -lightVect));// / (1.0 + 0.25 * pow(len, 2.0f)); добаляет затухание света при иудалении
+        resultLightColor += diffColor * vec4(v_lightProperty[i].diffuseColor, 1.0);
+        vec4 ambientColor = ambientFactor * diffMatColor;
+        resultLightColor += ambientColor * vec4(u_materialProperty.ambienceColor,1.0) * vec4(v_lightProperty[i].ambienceColor, 1.0);
+        vec4 specularColor = specColor * u_lightPower * pow(max(0.0, dot(reflectLight, -eyeVect)), specularFactor);// / (1.0 + 0.25 * pow(len, 2.0f));
+        resultLightColor += specularColor * vec4(u_materialProperty.specularColor,1.0) * vec4(v_lightProperty[i].specularColor, 1.0);
+
+        resultColor += resultLightColor;
     }
-    if(u_isUsingNormalMap) lightVect = normalize(v_tbnMatrix * lightVect);
-    vec3 reflectLight = normalize(reflect(lightVect, usingNormal));
-    float len = length(v_position.xyz - eyePosition.xyz);
-    float specularFactor = u_materialProperty.shinnes; //60.0;  // размер пятна блика
-    float ambientFactor = 0.1; // светимость самого материала
-
-    if(u_isUsingDiffuseMap == false) diffMatColor = vec4(u_materialProperty.diffuseColor, 1.0);
-    vec4 diffColor = diffMatColor * u_lightPower * max(0.0, dot(usingNormal, -lightVect));// / (1.0 + 0.25 * pow(len, 2.0f)); добаляет затухание света при иудалении
-    resultColor += diffColor;
-    vec4 ambientColor = ambientFactor * diffMatColor;
-    resultColor += ambientColor * vec4(u_materialProperty.ambienceColor,1.0);
-    vec4 specularColor = specColor * u_lightPower * pow(max(0.0, dot(reflectLight, -eyeVect)), specularFactor);// / (1.0 + 0.25 * pow(len, 2.0f));
-    resultColor += specularColor * vec4(u_materialProperty.specularColor,1.0);
-
     // чтобы не было совсем черных точек изменяем коэффициент затенения
     shadowCoef += 0.15; // чем больше тем светлее
     if(shadowCoef > 1.0) shadowCoef = 1.0;

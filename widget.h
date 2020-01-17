@@ -95,7 +95,7 @@ private:
     quint32 m_fbHeight;
     quint32 m_fbWidth;
 
-    Light *m_light1;
+    Light *m_light[3];
 
 
 };

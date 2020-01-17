@@ -29,10 +29,23 @@ Widget::Widget(QWidget *parent)
     m_projectionLightMatrix.setToIdentity();
     m_projectionLightMatrix.ortho(-40, 40, -40, 40, -40, 40);
 
-    m_light1 = new Light(Light::Spot);
-    m_light1->setPosition(QVector4D(10.0f, 10.0f, 10.0f, 1.0f));
-    m_light1->setDirection(QVector4D(-1.0f, -1.0f, -1.0f, 0.0));
-    m_light1->setCutoff(20.0f / 180.0f * M_PI );
+    m_light[0] = new Light(Light::Spot);
+    m_light[0]->setPosition(QVector4D(10.0f, 10.0f, 10.0f, 1.0f));
+    m_light[0]->setDirection(QVector4D(-1.0f, -1.0f, -1.0f, 0.0));
+    m_light[0]->setDiffuseColor(QVector3D(1.0f, 0.0f, 0.0f));
+    m_light[0]->setCutoff(10.0f / 180.0f * M_PI );
+
+    m_light[1] = new Light(Light::Spot);
+    m_light[1]->setPosition(QVector4D(-10.0f, 10.0f, 10.0f, 1.0f));
+    m_light[1]->setDirection(QVector4D(1.0f, -1.0f, -1.0f, 0.0));
+    m_light[1]->setDiffuseColor(QVector3D(0.0f, 1.0f, 0.0f));
+    m_light[1]->setCutoff(12.0f / 180.0f * M_PI );
+
+    m_light[2] = new Light(Light::Directional);
+    m_light[2]->setPosition(QVector4D(10.0f, 10.0f, -10.0f, 1.0f));
+    m_light[2]->setDirection(QVector4D(-1.0f, -1.0f, 1.0f, 0.0));
+    m_light[2]->setDiffuseColor(QVector3D(0.0f, 0.0f, 1.0f));
+    m_light[2]->setCutoff(8.0f / 180.0f * M_PI );
 
 
 //    m_lightRotateX = 30; // угол вращения света в градусах
@@ -84,7 +97,7 @@ void Widget::initializeGL()
 //    initCube(1.0f);
 //    m_objects[1]->translate(QVector3D(0.8f, 0.0f, 0.0f));
 
-    float step = 2.0f;
+    //float step = 2.0f;
 
     float x = 0.0, y = 0.0, z = 0.0;
 
@@ -177,7 +190,7 @@ void Widget::paintGL()
 
     m_programDepth.bind();
     m_programDepth.setUniformValue("u_projectionLightMatrix", m_projectionLightMatrix);
-    m_programDepth.setUniformValue("u_shadowLightMatrix", m_light1->getLightMatrix());
+    m_programDepth.setUniformValue("u_shadowLightMatrix", m_light[0]->getLightMatrix());
 
     for(auto *s3d: m_transformObjects){
         s3d->draw(&m_programDepth, context()->functions());
@@ -216,16 +229,20 @@ void Widget::paintGL()
    // m_program.setUniformValue("u_viewMatrix", viewMatrix);
    // m_program.setUniformValue("u_lightDirection", QVector4D(0.0, 0.0, -1.0, 0.0)); // т.к. камера смотрит на ось z источник света должен в противоположную сторону от камеры светить
     m_program.setUniformValue("u_projectionLightMatrix", m_projectionLightMatrix);
-    m_program.setUniformValue("u_shadowLightMatrix", m_light1->getLightMatrix());
+    m_program.setUniformValue("u_shadowLightMatrix", m_light[0]->getLightMatrix());
    // m_program.setUniformValue("u_lightMatrix", m_lightMatrix);
     m_program.setUniformValue("u_lightPower", 1.0f);
-    m_program.setUniformValue("u_lightProperty.ambienceColor", m_light1->getAmbienceColor());
-    m_program.setUniformValue("u_lightProperty.diffuseColor", m_light1->getDiffuseColor());
-    m_program.setUniformValue("u_lightProperty.specularColor", m_light1->getSpecularColor());
-    m_program.setUniformValue("u_lightProperty.position", m_light1->getPosition());
-    m_program.setUniformValue("u_lightProperty.direction", m_light1->getDirection());
-    m_program.setUniformValue("u_lightProperty.cutoff", m_light1->getCutoff());
-    m_program.setUniformValue("u_lightProperty.type", m_light1->getType());
+    for(int i = 0; i < 3; ++i){
+        m_program.setUniformValue(QString("u_lightProperty[%1].ambienceColor").arg(i).toLatin1().data(), m_light[i]->getAmbienceColor());
+        m_program.setUniformValue(QString("u_lightProperty[%1].diffuseColor").arg(i).toLatin1().data(), m_light[i]->getDiffuseColor());
+        m_program.setUniformValue(QString("u_lightProperty[%1].specularColor").arg(i).toLatin1().data(), m_light[i]->getSpecularColor());
+        m_program.setUniformValue(QString("u_lightProperty[%1].position").arg(i).toLatin1().data(), m_light[i]->getPosition());
+        m_program.setUniformValue(QString("u_lightProperty[%1].direction").arg(i).toLatin1().data(), m_light[i]->getDirection());
+        m_program.setUniformValue(QString("u_lightProperty[%1].cutoff").arg(i).toLatin1().data(), m_light[i]->getCutoff());
+        m_program.setUniformValue(QString("u_lightProperty[%1].type").arg(i).toLatin1().data(), m_light[i]->getType());
+    }
+    m_program.setUniformValue("u_countLights",3);
+    m_program.setUniformValue("u_indexLightForShadow", 0);
 
     m_camera->draw(&m_program);
     for(auto *s3d: m_transformObjects){
